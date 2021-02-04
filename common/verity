@@ -8,6 +8,10 @@ _require_scratch_verity()
 	_require_scratch
 	_require_command "$FSVERITY_PROG" fsverity
 
+	if [ $FSTYP == "btrfs" ]; then
+		_require_command "$BTRFS_CORRUPT_BLOCK_PROG" btrfs_corrupt_block
+	fi
+
 	if ! _scratch_mkfs_verity &>>$seqres.full; then
 		# ext4: need e2fsprogs v1.44.5 or later (but actually v1.45.2+
 		#       is needed for some tests to pass, due to an e2fsck bug)
@@ -146,6 +150,9 @@ _scratch_mkfs_verity()
 	case $FSTYP in
 	ext4|f2fs)
 		_scratch_mkfs -O verity
+		;;
+	btrfs)
+		_scratch_mkfs
 		;;
 	*)
 		_notrun "No verity support for $FSTYP"

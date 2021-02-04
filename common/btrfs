@@ -419,3 +419,8 @@ _btrfs_rescan_devices()
 {
 	$BTRFS_UTIL_PROG device scan &> /dev/null
 }
+
+_require_btrfs_corrupt_block()
+{
+	_require_command "$BTRFS_CORRUPT_BLOCK_PROG" btrfs_corrupt_block
+}
