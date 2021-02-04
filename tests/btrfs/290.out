@@ -1,0 +1,17 @@
+QA output created by 290
+cat: /mnt/scratch/inl: Input/output error
+dd: error reading '/mnt/scratch/inl': Input/output error
+cat: /mnt/scratch/prealloc: Input/output error
+dd: error reading '/mnt/scratch/prealloc': Input/output error
+cat: /mnt/scratch/reg: Input/output error
+dd: error reading '/mnt/scratch/reg': Input/output error
+cat: /mnt/scratch/punch: Input/output error
+dd: error reading '/mnt/scratch/punch': Input/output error
+cat: /mnt/scratch/plug: Input/output error
+dd: error reading '/mnt/scratch/plug': Input/output error
+cat: /mnt/scratch/desc: Invalid argument
+dd: failed to open '/mnt/scratch/desc': Invalid argument
+cat: /mnt/scratch/roothash: Input/output error
+dd: error reading '/mnt/scratch/roothash': Input/output error
+cat: /mnt/scratch/merkle: Input/output error
+dd: error reading '/mnt/scratch/merkle': Input/output error
