@@ -43,6 +43,11 @@ _scratch_mount
 fsv_orig_file=$SCRATCH_MNT/file
 fsv_file=$SCRATCH_MNT/file.fsv
 
+# utility needed for corrupting Merkle data itself in btrfs
+if [ $FSTYP == "btrfs" ]; then
+	_require_command "$BTRFS_CORRUPT_BLOCK_PROG" btrfs_corrupt_block
+fi
+
 setup_zeroed_file()
 {
 	local len=$1
