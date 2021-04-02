@@ -3,8 +3,7 @@
 #
 # Functions for setting up and testing fs-verity
 
-_require_scratch_verity()
-{
+_require_scratch_verity() {
 	_require_scratch
 	_require_command "$FSVERITY_PROG" fsverity
 
@@ -243,6 +242,18 @@ _fsv_scratch_corrupt_merkle_tree()
 		# itself, starting at the next 65536-byte aligned boundary.
 		(( offset += ($(_get_filesize $file) + 65535) & ~65535 ))
 		_fsv_scratch_corrupt_bytes $file $offset
+		;;
+	btrfs)
+		ino=$(ls -i $file | awk '{print $1}')
+		sync
+		cat > $tmp.bytes
+		sz=$(_get_filesize $tmp.bytes)
+		read -n 1 byte < $tmp.bytes
+		ascii=$(printf "%d" "'$byte'")
+		_scratch_unmount
+		$BTRFS_CORRUPT_BLOCK_PROG -r 5 -I $ino,37,0 -v $ascii -o $offset -b $sz $SCRATCH_DEV
+		sync
+		_scratch_mount
 		;;
 	*)
 		_fail "_fsv_scratch_corrupt_merkle_tree() unimplemented on $FSTYP"
