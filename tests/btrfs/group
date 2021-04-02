@@ -234,3 +234,4 @@
 229 auto quick send clone
 230 auto quick qgroup limit
 290 auto quick verity
+291 auto verity
