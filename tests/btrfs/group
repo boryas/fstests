@@ -239,3 +239,4 @@
 234 auto quick compress rw
 235 auto quick send
 290 auto quick verity
+291 auto verity
