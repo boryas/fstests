@@ -1,0 +1,94 @@
+#! /bin/bash
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (c) 2021 Facebook.  All Rights Reserved.
+#
+# FS QA Test 623
+#
+# Test fiemaps with offsets into small parts of extents.
+# Expect to get the whole extent, anyway.
+#
+seq=`basename $0`
+seqres=$RESULT_DIR/$seq
+echo "QA output created by $seq"
+
+here=`pwd`
+tmp=/tmp/$$
+status=1	# failure is the default!
+trap "_cleanup; exit \$status" 0 1 2 3 15
+
+_cleanup()
+{
+	cd /
+	rm -f $tmp.*
+	rm -f $fiemap_file
+}
+
+# get standard environment, filters and checks
+. ./common/rc
+. ./common/filter
+
+# remove previous $seqres.full before test
+rm -f $seqres.full
+
+# real QA test starts here
+
+# Modify as appropriate.
+_supported_fs generic
+_require_test
+_require_xfs_io_command "fiemap"
+
+rm -f $seqres.full
+
+fiemap_file=$TEST_DIR/foo.$$
+
+do_fiemap() {
+	off=$1
+	len=$2
+	echo $off $len >> $seqres.full
+	$XFS_IO_PROG -c "fiemap $off $len" $fiemap_file | tee -a $seqres.full
+}
+
+check_fiemap() {
+	off=$1
+	len=$2
+	actual=$(do_fiemap $off $len)
+	[ "$actual" == "$expected" ] || _fail "unexpected fiemap on $off $len"
+}
+
+# write a file with one extent
+block_size=$(_get_block_size $TEST_DIR)
+$XFS_IO_PROG -f -s -c "pwrite -S 0xcf 0 $block_size" $fiemap_file >/dev/null
+
+# since the exact extent location is unpredictable especially when
+# varying file systems, just test that they are all equal, which is
+# what we really expect.
+expected=$(do_fiemap)
+
+mid=$((block_size / 2))
+almost=$((block_size - 5))
+past=$((block_size + 1))
+
+check_fiemap 0 $mid
+check_fiemap 0 $block_size
+check_fiemap 0 $past
+check_fiemap $mid $almost
+check_fiemap $mid $block_size
+check_fiemap $mid $past
+check_fiemap $almost 5
+check_fiemap $almost 6
+
+# fiemap output explicitly deals in 512 byte increments,
+# so exercise some cases where len is 512.
+# Naturally, some of these can't work if block size is 512.
+one_short=$((block_size - 512))
+check_fiemap 0 512
+check_fiemap $one_short 512
+check_fiemap $almost 512
+
+_test_unmount
+
+echo "Silence is golden"
+
+# success, all done
+status=0
+exit
