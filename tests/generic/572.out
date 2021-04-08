@@ -32,9 +32,9 @@ ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Device or resource
 * xfs_io writing, should be O_RDWR
 SCRATCH_MNT/file.fsv: Operation not permitted
 * bash >>, should be O_APPEND
-bash: SCRATCH_MNT/file.fsv: Operation not permitted
+bash: line 1: SCRATCH_MNT/file.fsv: Operation not permitted
 * bash >, should be O_WRONLY|O_CREAT|O_TRUNC
-bash: SCRATCH_MNT/file.fsv: Operation not permitted
+bash: line 1: SCRATCH_MNT/file.fsv: Operation not permitted
 
 # verity file can be read
 
