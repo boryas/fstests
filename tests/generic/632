@@ -1,0 +1,86 @@
+#! /bin/bash
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (c) 2021 Facebook, Inc.  All Rights Reserved.
+#
+# FS QA Test 632
+#
+# Test some EFBIG scenarios with very large files.
+# To create the files, use pwrite with an offset close to the
+# file system's max file size.
+#
+seq=`basename $0`
+seqres=$RESULT_DIR/$seq
+echo "QA output created by $seq"
+
+here=`pwd`
+tmp=/tmp/$$
+status=1	# failure is the default!
+trap "_cleanup; exit \$status" 0 1 2 3 15
+
+_cleanup()
+{
+	cd /
+	rm -f $tmp.*
+}
+
+# get standard environment, filters and checks
+. ./common/rc
+. ./common/filter
+. ./common/verity
+
+# remove previous $seqres.full before test
+rm -f $seqres.full
+
+# real QA test starts here
+
+# Modify as appropriate.
+_supported_fs btrfs ext4 f2fs
+_require_test
+_require_math
+_require_scratch_verity
+
+_scratch_mkfs_verity &>> $seqres.full
+_scratch_mount
+
+fsv_file=$SCRATCH_MNT/file.fsv
+
+max_sz=$(_get_max_file_size)
+_fsv_scratch_begin_subtest "way too big: fail on first merkle block"
+# have to go back by 4096 from max to not hit the fsverity MAX_DEPTH check.
+$XFS_IO_PROG -fc "pwrite -q $(($max_sz - 4096)) 1" $fsv_file
+_fsv_enable $fsv_file |& _filter_scratch
+
+# The goal of this second test is to make a big enough file that we trip the
+# EFBIG codepath, but not so big that we hit it immediately as soon as we try
+# to write a Merkle leaf. Because of the layout of the Merkle tree that
+# fs-verity uses, this is a bit complicated to compute dynamically.
+
+# The layout of the Merkle tree has the leaf nodes last, but writes them first.
+# To get an interesting overflow, we need the start of L0 to be < MAX but the
+# end of the merkle tree (EOM) to be past MAX. Ideally, the start of L0 is only
+# just smaller than MAX, so that we don't have to write many blocks to blow up.
+
+# 0                        EOF round-to-64k L7L6L5 L4   L3    L2    L1  L0 MAX  EOM
+# |-------------------------|               ||-|--|---|----|-----|------|--|!!!!!|
+
+# Given this structure, we can compute the size of the file that yields the
+# desired properties:
+# sz + 64k + sz/128^8 + sz/128^7 + ... + sz/128^2 < MAX
+# (128^8)sz + (128^8)64k + sz + (128)sz + (128^2)sz + ... + (128^6)sz < (128^8)MAX
+# sz(128^8 + 128^6 + 128^5 + 128^4 + 128^3 + 128^2 + 128 + 1) < (128^8)(MAX - 64k)
+# sz < (128^8/(128^8 + (128^6 + ... 1))(MAX - 64k)
+#
+# Do the actual caclulation with 'bc' and 20 digits of precision.
+set -f
+calc="scale=20; ($max_sz - 65536) * ((128^8) / (1 + 128 + 128^2 + 128^3 + 128^4 + 128^5 + 128^6 + 128^8))"
+sz=$(echo $calc | $BC -q | cut -d. -f1)
+set +f
+
+
+_fsv_scratch_begin_subtest "still too big: fail on first invalid merkle block"
+$XFS_IO_PROG -fc "pwrite -q $sz 1" $fsv_file
+_fsv_enable $fsv_file |& _filter_scratch
+
+# success, all done
+status=0
+exit
